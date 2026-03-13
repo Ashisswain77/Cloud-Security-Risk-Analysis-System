@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
+import axios from 'axios';
 
 const ScanContext = createContext(null);
 
@@ -16,21 +17,23 @@ export const ScanProvider = ({ children }) => {
     setScanError(null);
 
     try {
-      const res = await fetch(`${API_URL}/scan`, {
-        method: 'POST',
+      /* Replaced fetch with axios to point to Python backend running on localhost:8000 */
+      const res = await axios.get(`http://localhost:8000/scan`, {
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ accessKey, secretKey, region, scanDepth }),
+        }
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const data = res.data;
 
       setScanData({
-        findings: data.findings,
-        summary: data.summary,
+        findings: data.results, // Python backend returns {"results": [...] }
+        summary: {
+          totalFindings: data.results.length,
+          highRisk: data.results.filter(f => f.risk === 'High').length,
+          mediumRisk: data.results.filter(f => f.risk === 'Medium').length,
+          lowRisk: data.results.filter(f => f.risk === 'Low').length,
+        },
       });
 
       return data;
