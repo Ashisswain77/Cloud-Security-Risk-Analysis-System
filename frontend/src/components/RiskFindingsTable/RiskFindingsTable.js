@@ -28,21 +28,35 @@ const RiskFindingsTable = () => {
   const filteredData = useMemo(() => {
     let data = [...riskData];
     if (riskFilter !== 'All') {
-      data = data.filter((item) => item.riskLevel === riskFilter);
+      data = data.filter((item) => (item.risk || item.riskLevel) === riskFilter);
     }
     if (searchTerm) {
       const lower = searchTerm.toLowerCase();
       data = data.filter(
         (item) =>
-          item.id.toLowerCase().includes(lower) ||
-          item.service.toLowerCase().includes(lower) ||
-          item.issue.toLowerCase().includes(lower)
+          (item.resource || item.id || '').toLowerCase().includes(lower) ||
+          (item.type || item.service || '').toLowerCase().includes(lower) ||
+          (item.issue || '').toLowerCase().includes(lower)
       );
     }
     if (sortConfig.key) {
       data.sort((a, b) => {
-        const aVal = a[sortConfig.key];
-        const bVal = b[sortConfig.key];
+        // Map abstract sort keys back to whichever format the payload is actually using
+        let aVal, bVal;
+        if (sortConfig.key === 'id') {
+          aVal = a.resource || a.id;
+          bVal = b.resource || b.id;
+        } else if (sortConfig.key === 'service') {
+          aVal = a.type || a.service;
+          bVal = b.type || b.service;
+        } else if (sortConfig.key === 'riskLevel') {
+          aVal = a.risk || a.riskLevel;
+          bVal = b.risk || b.riskLevel;
+        } else {
+          aVal = a[sortConfig.key];
+          bVal = b[sortConfig.key];
+        }
+
         if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
@@ -122,7 +136,7 @@ const RiskFindingsTable = () => {
                 {level}
                 {level !== 'All' && (
                   <span className="risk-table__filter-count">
-                    {riskData.filter((d) => d.riskLevel === level).length}
+                    {riskData.filter((d) => (d.risk || d.riskLevel) === level).length}
                   </span>
                 )}
               </button>
@@ -149,23 +163,29 @@ const RiskFindingsTable = () => {
             </thead>
             <tbody>
               {filteredData.length > 0 ? (
-                filteredData.map((item, index) => (
-                  <tr key={`${item.id}-${index}`} style={{ animationDelay: `${index * 0.05}s` }}>
-                    <td>
-                      <code className="risk-table__resource-id">{item.id}</code>
-                    </td>
-                    <td>
-                      <span className="risk-table__service-badge">{item.service}</span>
-                    </td>
-                    <td>
-                      <span className={`risk-badge ${getRiskBadgeClass(item.riskLevel)}`}>
-                        {item.riskLevel}
-                      </span>
-                    </td>
-                    <td className="risk-table__issue">{item.issue}</td>
-                    <td className="risk-table__fix">{item.fix}</td>
-                  </tr>
-                ))
+                filteredData.map((item, index) => {
+                  const resourceId = item.resource || item.id || 'N/A';
+                  const serviceType = item.type || item.service || 'N/A';
+                  const riskLevel = item.risk || item.riskLevel || 'Unknown';
+                  
+                  return (
+                    <tr key={`${resourceId}-${index}`} style={{ animationDelay: `${index * 0.05}s` }}>
+                      <td>
+                        <code className="risk-table__resource-id">{resourceId}</code>
+                      </td>
+                      <td>
+                        <span className="risk-table__service-badge">{serviceType}</span>
+                      </td>
+                      <td>
+                        <span className={`risk-badge ${getRiskBadgeClass(riskLevel)}`}>
+                          {riskLevel}
+                        </span>
+                      </td>
+                      <td className="risk-table__issue">{item.issue || 'N/A'}</td>
+                      <td className="risk-table__fix">{item.fix || 'N/A'}</td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan="5" className="risk-table__empty">

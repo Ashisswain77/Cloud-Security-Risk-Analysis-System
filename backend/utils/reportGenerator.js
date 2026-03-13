@@ -6,18 +6,18 @@ const PDFDocument = require('pdfkit');
 function generateCSV(findings, summary) {
   const headers = ['Resource ID', 'Service', 'Risk Level', 'Issue', 'Recommended Fix'];
   const rows = findings.map((f) => [
-    `"${f.id}"`,
-    `"${f.service}"`,
-    `"${f.riskLevel}"`,
-    `"${f.issue.replace(/"/g, '""')}"`,
-    `"${f.fix.replace(/"/g, '""')}"`,
+    `"${f.resource || f.id || 'Unknown'}"`,
+    `"${f.type || f.service || 'Unknown'}"`,
+    `"${f.risk || f.riskLevel || 'Unknown'}"`,
+    `"${(f.issue || 'N/A').replace(/"/g, '""')}"`,
+    `"${(f.fix || 'N/A').replace(/"/g, '""')}"`,
   ]);
 
   let csv = `ShadowGuard Security Report\n`;
-  csv += `Generated: ${summary.scannedAt}\n`;
-  csv += `Region: ${summary.region}\n`;
-  csv += `Total Findings: ${summary.totalResources}\n`;
-  csv += `Critical: ${summary.critical} | Medium: ${summary.medium} | Low: ${summary.low}\n\n`;
+  csv += `Generated: ${summary.scannedAt || new Date().toISOString()}\n`;
+  csv += `Region: ${summary.region || 'N/A'}\n`;
+  csv += `Total Findings: ${summary.totalResources || 0}\n`;
+  csv += `Critical: ${summary.critical || 0} | Medium: ${summary.medium || 0} | Low: ${summary.low || 0}\n\n`;
   csv += headers.join(',') + '\n';
   csv += rows.map((r) => r.join(',')).join('\n');
 
@@ -43,27 +43,29 @@ function generatePDF(findings, summary) {
 
     // Meta
     doc.fontSize(10).fillColor('#333');
-    doc.text(`Generated: ${new Date(summary.scannedAt).toLocaleString()}`);
-    doc.text(`Region: ${summary.region}`);
+    doc.text(`Generated: ${summary.scannedAt ? new Date(summary.scannedAt).toLocaleString() : new Date().toLocaleString()}`);
+    doc.text(`Region: ${summary.region || 'N/A'}`);
     doc.moveDown();
 
     // Summary box
     doc.fontSize(14).fillColor('#000').text('Executive Summary');
     doc.moveDown(0.5);
     doc.fontSize(11).fillColor('#333');
-    doc.text(`Total Findings: ${summary.totalResources}`);
-    doc.fillColor('#EF4444').text(`Critical: ${summary.critical}`);
-    doc.fillColor('#F59E0B').text(`Medium: ${summary.medium}`);
-    doc.fillColor('#22C55E').text(`Low: ${summary.low}`);
+    doc.text(`Total Findings: ${summary.totalResources || 0}`);
+    doc.fillColor('#EF4444').text(`Critical: ${summary.critical || 0}`);
+    doc.fillColor('#F59E0B').text(`Medium: ${summary.medium || 0}`);
+    doc.fillColor('#22C55E').text(`Low: ${summary.low || 0}`);
     doc.moveDown();
 
     // Service breakdown
     doc.fillColor('#000').fontSize(14).text('Findings by Service');
     doc.moveDown(0.5);
     doc.fontSize(11).fillColor('#333');
-    for (const [service, count] of Object.entries(summary.services)) {
-      if (count > 0) {
-        doc.text(`${service}: ${count} finding(s)`);
+    if (summary.services) {
+      for (const [service, count] of Object.entries(summary.services)) {
+        if (count > 0) {
+          doc.text(`${service}: ${count} finding(s)`);
+        }
       }
     }
     doc.moveDown();
@@ -78,14 +80,15 @@ function generatePDF(findings, summary) {
         doc.addPage();
       }
 
-      const riskColors = { Critical: '#EF4444', Medium: '#F59E0B', Low: '#22C55E' };
+      const riskColors = { Critical: '#EF4444', High: '#EF4444', Medium: '#F59E0B', Low: '#22C55E' };
+      const riskLevel = finding.risk || finding.riskLevel || 'Unknown';
 
-      doc.fontSize(11).fillColor('#000').text(`${index + 1}. [${finding.service}] ${finding.id}`, {
+      doc.fontSize(11).fillColor('#000').text(`${index + 1}. [${finding.type || finding.service || 'Unknown'}] ${finding.resource || finding.id || 'Unknown'}`, {
         continued: false,
       });
-      doc.fontSize(10).fillColor(riskColors[finding.riskLevel] || '#333').text(`   Risk: ${finding.riskLevel}`);
-      doc.fillColor('#333').text(`   Issue: ${finding.issue}`);
-      doc.fillColor('#2563EB').text(`   Fix: ${finding.fix}`);
+      doc.fontSize(10).fillColor(riskColors[riskLevel] || '#333').text(`   Risk: ${riskLevel}`);
+      doc.fillColor('#333').text(`   Issue: ${finding.issue || 'N/A'}`);
+      doc.fillColor('#2563EB').text(`   Fix: ${finding.fix || 'N/A'}`);
       doc.moveDown(0.5);
     });
 

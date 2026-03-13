@@ -37,7 +37,7 @@ def scan_ec2(access_key, secret_key, region):
                                 findings.append({
                                     "resource": instance_id,
                                     "type": "EC2",
-                                    "risk": "High",
+                                    "risk": "Critical",
                                     "issue": f"Open port {from_port} to 0.0.0.0/0"
                                 })
                                 is_vulnerable = True
@@ -82,7 +82,7 @@ def scan_s3(access_key, secret_key, region):
                     findings.append({
                         "resource": name,
                         "type": "S3",
-                        "risk": "High",
+                        "risk": "Critical",
                         "issue": "Public bucket detected"
                     })
                     is_vulnerable = True

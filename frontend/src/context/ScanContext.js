@@ -33,22 +33,23 @@ export const ScanProvider = ({ children }) => {
       const data = res.data;
       const results = data.results || [];
 
-      setScanData({
+      const newScanData = {
         findings: results, // Python backend returns {"results": [...] }
         summary: {
           totalResources: results.length,
-          critical: results.filter(f => f.risk === 'High' || f.risk === 'Critical').length,
-          medium: results.filter(f => f.risk === 'Medium').length,
-          low: results.filter(f => f.risk === 'Low').length,
+          critical: results.filter(f => f.risk === 'Critical' || f.risk === 'High' || f.riskLevel === 'Critical' || f.riskLevel === 'High').length,
+          medium: results.filter(f => f.risk === 'Medium' || f.riskLevel === 'Medium').length,
+          low: results.filter(f => f.risk === 'Low' || f.riskLevel === 'Low').length,
           scannedAt: new Date().toISOString(),
           services: results.reduce((acc, finding) => {
             acc[finding.type] = (acc[finding.type] || 0) + 1;
             return acc;
           }, { EC2: 0, S3: 0, IAM: 0, RDS: 0, Lambda: 0, VPC: 0 })
         },
-      });
+      };
 
-      return data;
+      setScanData(newScanData);
+      return newScanData;
     } catch (error) {
       const errorMessage = error.response?.data?.detail || error.message;
       setScanError(errorMessage);
