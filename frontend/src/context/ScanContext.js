@@ -18,28 +18,41 @@ export const ScanProvider = ({ children }) => {
 
     try {
       /* Replaced fetch with axios to point to Python backend running on localhost:8000 */
-      const res = await axios.get(`http://localhost:8000/scan`, {
+      const res = await axios.post(`http://localhost:8000/scan`, {
+        accessKey,
+        secretKey,
+        region,
+        scanDepth
+      }, {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         }
       });
 
       const data = res.data;
+      const results = data.results || [];
 
       setScanData({
-        findings: data.results, // Python backend returns {"results": [...] }
+        findings: results, // Python backend returns {"results": [...] }
         summary: {
-          totalFindings: data.results.length,
-          highRisk: data.results.filter(f => f.risk === 'High').length,
-          mediumRisk: data.results.filter(f => f.risk === 'Medium').length,
-          lowRisk: data.results.filter(f => f.risk === 'Low').length,
+          totalResources: results.length,
+          critical: results.filter(f => f.risk === 'High' || f.risk === 'Critical').length,
+          medium: results.filter(f => f.risk === 'Medium').length,
+          low: results.filter(f => f.risk === 'Low').length,
+          scannedAt: new Date().toISOString(),
+          services: results.reduce((acc, finding) => {
+            acc[finding.type] = (acc[finding.type] || 0) + 1;
+            return acc;
+          }, { EC2: 0, S3: 0, IAM: 0, RDS: 0, Lambda: 0, VPC: 0 })
         },
       });
 
       return data;
     } catch (error) {
-      setScanError(error.message);
-      throw error;
+      const errorMessage = error.response?.data?.detail || error.message;
+      setScanError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsScanning(false);
     }

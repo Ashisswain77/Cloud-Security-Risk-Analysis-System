@@ -62,10 +62,23 @@ const ScanForm = () => {
         formData.region,
         formData.scanDepth
       );
-      setScanResult({
-        success: true,
-        message: `Scan completed! Found ${data.findings.length} findings across ${Object.keys(data.summary.services).filter(k => data.summary.services[k] > 0).length} services.`,
-      });
+      
+      const findingCount = data.findings ? data.findings.length : 0;
+      const serviceCount = data.summary && data.summary.services 
+        ? Object.keys(data.summary.services).filter(k => data.summary.services[k] > 0).length 
+        : 0;
+
+      if (findingCount === 0) {
+        setScanResult({
+          success: true,
+          message: `Scan finished, but no findings were detected. Please ensure your AWS credentials are correct.`,
+        });
+      } else {
+        setScanResult({
+          success: true,
+          message: `Scan completed! Found ${findingCount} findings across ${serviceCount} services.`,
+        });
+      }
     } catch (error) {
       setScanResult({
         success: false,
